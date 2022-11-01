@@ -1,10 +1,16 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:practice12/helpers/helpers.dart';
+import 'package:practice12/helpers/message_exception.dart';
+import 'package:practice12/repository/firebase_auth.dart';
 import 'package:practice12/theme/modelTheme.dart';
 import 'package:practice12/helpers/size_config.dart';
 import 'package:pinput/pin_put/pin_put.dart';
+import 'package:practice12/widgets/customSnackBar.dart';
 import 'package:provider/provider.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -14,10 +20,23 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  final _auth = FirebaseAuth.instance;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _formKeyRegister = GlobalKey<FormState>();
   int numScreen = 1;
+
+  bool _obscurePassword = true;
+  bool codeSumbit = false;
+  String _verificationID = '';
+  String _email = '';
+  String _password = '';
+
+  bool codeVerify = true;
+  final _pinPutController = TextEditingController();
+
+  TextEditingController _phone = TextEditingController();
+
   getPage() {
     switch (numScreen) {
       case 1:
@@ -36,6 +55,58 @@ class _AuthPageState extends State<AuthPage> {
     });
   }
 
+  void _validateAuth() async {
+    final FormState? form = _formKey.currentState;
+    if (_formKey.currentState!.validate()) {
+      helpers.showProgress(
+          context, 'Выполняется вход, пожалуйста подождите', false);
+      form!.save();
+      try {
+        bool result = await fbAuth.auth(_email, _password);
+        if (result) {
+          helpers.hideProgress();
+          print('Document exist on the database');
+          Navigator.pushNamedAndRemoveUntil(
+              context, 'tabNavigator', (Route<dynamic> route) => false);
+        } else {
+          helpers.hideProgress();
+          Navigator.pushNamed(context, 'registrationScreen');
+        }
+      } on MessageException catch (e) {
+        helpers.hideProgress();
+        print(e);
+        CustomSnackBar(context, Text(e.message), Colors.lightGreen);
+      }
+    }
+  }
+
+  _phoneAuth() async {
+    try {
+      await fbAuth.submitPhoneNumber(
+          phoneNumber: _phone.text,
+          func: (value) {
+            setState(() {
+              _verificationID = value;
+            });
+            if (_verificationID != null) {
+              CustomSnackBar(
+                  context, Text('СМС код выслан'), Colors.lightGreen);
+              setState(() {
+                codeSumbit = false;
+                numScreen = 4;
+              });
+            }
+          },
+          durationCode: () {
+            setState(() {
+              codeSumbit = true;
+            });
+          });
+    } on MessageException catch (e) {
+      CustomSnackBar(context, Text(e.message), Colors.red);
+    }
+  }
+
   Widget emailForm() {
     return Column(
       children: [
@@ -46,24 +117,6 @@ class _AuthPageState extends State<AuthPage> {
               'Вход по Email',
               style: TextStyle(fontSize: 14),
             ),
-            InkWell(
-              onTap: () {
-                setState(() {
-                  numScreen = 3;
-                });
-              },
-              child: Row(
-                children: [
-                  Text(
-                    'Регистрация',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  SizedBox(
-                    width: 5,
-                  ),
-                ],
-              ),
-            )
           ],
         ),
         SizedBox(
@@ -74,7 +127,7 @@ class _AuthPageState extends State<AuthPage> {
           padding: EdgeInsets.only(top: 25, left: 10, right: 10, bottom: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.all(Radius.circular(5)),
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
           ),
           child: Form(
             key: _formKey,
@@ -89,11 +142,28 @@ class _AuthPageState extends State<AuthPage> {
               ),
               TextFormField(
                 onSaved: (input) {
-                  //_email =input;
+                  _email = input!;
+                },
+                validator: (value) {
+                  if (value != null || value!.isNotEmpty) {
+                    final RegExp regex = RegExp(
+                        r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)| (\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$');
+                    if (!regex.hasMatch(value))
+                      return 'Введите корректный email';
+                    else
+                      return null;
+                  } else {
+                    return 'Введите корректный email';
+                  }
                 },
                 decoration: InputDecoration(
+                  errorStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFFFF0000)),
                   contentPadding:
                       EdgeInsets.symmetric(vertical: 15, horizontal: 0),
+                  prefixIcon: Container(child: Icon(Icons.email)),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFFC5CEE0)),
                   ),
@@ -115,12 +185,41 @@ class _AuthPageState extends State<AuthPage> {
                 height: 15,
               ),
               TextFormField(
+                obscureText: _obscurePassword,
+                onSaved: (input) => _password = input!,
+                validator: (input) {
+                  if (input!.isEmpty) {
+                    return "Неверный пароль";
+                  } else {
+                    if (input.length < 6) {
+                      return "Пароль слишком короткий";
+                    } else {
+                      return null;
+                    }
+                  }
+                },
                 decoration: InputDecoration(
+                  errorStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFFFF0000),
+                  ),
                   contentPadding:
                       EdgeInsets.symmetric(vertical: 15, horizontal: 0),
+                  suffixIcon: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                    child: Icon(Icons.remove_red_eye),
+                  ),
+                  prefixIcon: Container(child: Icon(Icons.password)),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFFC5CEE0)),
                   ),
+                  focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFC5CEE0))),
                   hintText: 'Введите пароль',
                   hintStyle: TextStyle(fontSize: 14),
                 ),
@@ -130,6 +229,17 @@ class _AuthPageState extends State<AuthPage> {
               ),
               SizedBox(
                 height: 25.0,
+              ),
+              Container(
+                width: MediaQuery.of(context).size.width,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      textStyle: const TextStyle(fontSize: 20)),
+                  onPressed: () {
+                    _validateAuth();
+                  },
+                  child: const Text('Войти'),
+                ),
               ),
               SizedBox(
                 height: 14,
@@ -154,6 +264,8 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Widget phoneForm() {
+    var maskFormatter = new MaskTextInputFormatter(
+        mask: '+7 (###) ###-##-##', filter: {"#": RegExp(r'[0-9]')});
     return Column(
       children: [
         Text('Добро пожаловать', style: TextStyle(fontSize: 14)),
@@ -179,6 +291,8 @@ class _AuthPageState extends State<AuthPage> {
               ),
               TextField(
                 keyboardType: TextInputType.number,
+                inputFormatters: [maskFormatter],
+                controller: _phone,
                 decoration: InputDecoration(
                     enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Color(0xFFC5CEE0))),
@@ -187,6 +301,17 @@ class _AuthPageState extends State<AuthPage> {
               ),
               SizedBox(
                 height: 25,
+              ),
+              Container(
+                width: MediaQuery.of(context).size.width,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      textStyle: const TextStyle(fontSize: 20)),
+                  onPressed: () {
+                    _phoneAuth();
+                  },
+                  child: const Text('Войти'),
+                ),
               ),
               SizedBox(
                 height: 25,
@@ -301,9 +426,6 @@ class _AuthPageState extends State<AuthPage> {
                                 child: Image.asset("assets/icon.png"),
                               ),
                             ),
-                            Expanded(
-                              child: Container(),
-                            ),
                             Container(
                               padding: EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 15),
@@ -333,7 +455,23 @@ class _AuthPageState extends State<AuthPage> {
                                         MediaQuery.of(context).size.width / 10,
                                   ),
                                   child: PinPut(
-                                      onSubmit: (value) async {},
+                                      onSubmit: (value) async {
+                                        try {
+                                          bool value = await fbAuth.submitCode(
+                                              code: _pinPutController.text,
+                                              verificationId: _verificationID,
+                                              context: context);
+                                          if (!value) {
+                                            setState(() {
+                                              codeVerify = false;
+                                            });
+                                          }
+                                        } on MessageException catch (e) {
+                                          CustomSnackBar(context,
+                                              Text(e.message), Colors.red);
+                                        }
+                                      },
+                                      controller: _pinPutController,
                                       fieldsCount: 6,
                                       fieldsAlignment:
                                           MainAxisAlignment.spaceAround,
@@ -346,7 +484,10 @@ class _AuthPageState extends State<AuthPage> {
                                         height: 2,
                                         color: Color.fromRGBO(197, 206, 224, 1),
                                       )),
-                                )
+                                ),
+                                if (!codeVerify)
+                                  Text('Неверный код',
+                                      style: TextStyle(fontSize: 14)),
                               ]),
                             )
                           ],

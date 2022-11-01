@@ -34,6 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
+  crypto: ^3.0.2
 
 dev_dependencies:
   flutter_test:
@@ -48,11 +49,14 @@ dev_dependencies:
   provider: 6.0.3
   shared_preferences: ^2.0.15
   pinput: 1.2.0
+  mask_text_input_formatter: ^1.2.1
+  progress_dialog: ^1.2.4
+  beamer: ^1.5.3
 
-  firebase_core: ^1.17.1
-  firebase_messaging: ^11.2.12
+  firebase_core: ^2.1.1
+  firebase_messaging: ^14.0.3
   firebase_auth: any
-  cloud_firestore: ^3.1.8
+  cloud_firestore: ^4.0.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
