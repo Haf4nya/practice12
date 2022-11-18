@@ -10,6 +10,7 @@ class NotesPage extends StatefulWidget {
   //Creates a RootPage
   const NotesPage(
       {required this.label,
+      required this.detailsApartmentsPath,
       required this.detailsPath,
       required this.detailsHomePhonePath,
       Key? key})
@@ -20,6 +21,9 @@ class NotesPage extends StatefulWidget {
 
   //Path to the details page
   final String detailsPath;
+
+  /// The path to the detail page
+  final String detailsApartmentsPath;
 
   //Path to the details page
   final String detailsHomePhonePath;
@@ -80,8 +84,8 @@ class _NotesPageState extends State<NotesPage> {
                     color: Colors.blue,
                     width: MediaQuery.of(context).size.width,
                     child: TextButton(
-                      onPressed: () =>
-                          Beamer.of(context).beamToNamed(widget.detailsPath),
+                      onPressed: () => Beamer.of(context)
+                          .beamToNamed(widget.detailsApartmentsPath),
                       child: const Text(
                         'Квартиры',
                         style: TextStyle(color: Colors.white),

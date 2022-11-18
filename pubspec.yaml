@@ -35,6 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   crypto: ^3.0.2
+  flutter_rounded_progress_bar: ^0.2.0
 
 dev_dependencies:
   flutter_test:
@@ -53,11 +54,17 @@ dev_dependencies:
   progress_dialog: ^1.2.4
   beamer: ^1.5.3
   device_info_plus: ^4.1.2
+  multi_image_picker: ^4.7.15
+  cached_network_image: ^2.5.1
+  image_picker: ^0.8.6
+  permission_handler: ^10.2.0
 
-  firebase_core: ^2.1.1
-  firebase_messaging: ^14.0.3
-  firebase_auth: any
-  cloud_firestore: ^4.0.3
+
+  firebase_storage: ^11.0.5
+  firebase_core: ^2.2.0
+  firebase_messaging: ^14.1.0
+  firebase_auth: ^4.1.2
+  cloud_firestore: ^4.0.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
